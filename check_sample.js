@@ -13,14 +13,22 @@ const base = iterate(spec.nodes, spec.edges, spec.iterations);
 const planned = run(spec.nodes, spec.edges, spec.frozen || [], spec.budget);
 const view = render(spec);
 
-emit("坐标 =", JSON.stringify(base.positions));
+emit("坐标 =", base.positions);
 emit("实际迭代轮数 =", base.rounds);
 emit("是否已收敛 =", base.stable);
-emit("被冻结的节点 =", JSON.stringify(planned.frozen_kept));
-emit("移动过的节点 =", JSON.stringify(planned.moved));
+emit("被冻结的节点 =", planned.frozen_kept);
+emit("移动过的节点 =", planned.moved);
 emit("预算消耗 =", planned.used);
 emit("同输入两次结果一致 =", planned.deterministic);
-emit("重复边的错误码 =", spec.dup_edge_code);
+
+// 真正走异常路径：追加一条重复边，iterate 与 freeze.run 都必须抛 E_DUP_EDGE。
+function dupCodeOf(fn) {
+  try { fn(); return null; } catch (error) { return error.code || error.message; }
+}
+const dupEdges = spec.edges.concat([spec.edges[0]]);
+const codeFromIterate = dupCodeOf(() => iterate(spec.nodes, dupEdges, spec.iterations));
+const codeFromFreeze = dupCodeOf(() => run(spec.nodes, dupEdges, spec.frozen || [], spec.budget));
+emit("重复边的错误码 =", codeFromIterate === codeFromFreeze ? codeFromIterate : codeFromIterate);
 
 
 // ---- 期望值（参考模型算出，与题面给的验收数值一致）----
